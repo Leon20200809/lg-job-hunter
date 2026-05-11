@@ -1,0 +1,51 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/
+debug.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Dependency directories
+vendor/
+node_modules/
+
+# Build / cache
+dist/
+build/
+.cache/
+.tmp/
+temp/
+
+# WordPress / Local development noise
+wp-config.php
+wp-content/uploads/
+wp-content/cache/
+wp-content/upgrade/
+wp-content/backup*/
+wp-content/ai1wm-backups/
+
+# Plugin development samples
+dev-samples/
+*.html
+*.png
+*.jpg
+*.jpeg
+*.webp
+
+# Composer / npm lock files if not using them yet
+# composer.lock
+# package-lock.json
+
+# Archives
+*.zip
+*.tar
+*.gz
