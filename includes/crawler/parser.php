@@ -159,3 +159,69 @@ function lgjh_clean_text($text)
 
     return $text;
 }
+
+/**
+ * ハローワーク検索結果ページHTMLから詳細ページURL一覧を解析する
+ *
+ * @param string $html 検索結果ページHTML
+ * @return array 詳細ページURLの配列
+ */
+function lgjh_parse_hellowork_search_result_urls($html)
+{
+    if (empty($html)) {
+        return [];
+    }
+
+    libxml_use_internal_errors(true);
+
+    $dom = new DOMDocument();
+    $dom->loadHTML('<?xml encoding="UTF-8">' . $html);
+
+    $xpath = new DOMXPath($dom);
+
+    // 検索結果一覧にある「詳細を表示」リンクを全部取得
+    $link_nodes = $xpath->query('//a[@id="ID_dispDetailBtn"]');
+
+    $detail_urls = [];
+
+    foreach ($link_nodes as $link_node) {
+        if (!$link_node instanceof DOMElement) {
+            continue;
+        }
+
+        $href = trim($link_node->getAttribute('href'));
+
+        if (empty($href)) {
+            continue;
+        }
+
+        $detail_urls[] = lgjh_build_hellowork_absolute_url($href);
+    }
+
+    libxml_clear_errors();
+
+    return array_values(array_unique($detail_urls));
+}
+
+/**
+ * ハローワークの相対URLを絶対URLに変換する
+ *
+ * @param string $href href属性の値
+ * @return string 絶対URL
+ */
+function lgjh_build_hellowork_absolute_url($href)
+{
+    if (empty($href)) {
+        return '';
+    }
+
+    // すでに絶対URLならそのまま返す
+    if (preg_match('/^https?:\/\//', $href)) {
+        return esc_url_raw($href);
+    }
+
+    // "./GECA110010.do?..." の "./" を取り除く
+    $href = preg_replace('/^\.\//', '', $href);
+
+    return esc_url_raw('https://www.hellowork.mhlw.go.jp/kensaku/' . $href);
+}
