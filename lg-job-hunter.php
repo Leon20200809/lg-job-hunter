@@ -28,5 +28,8 @@ require_once LG_JOB_HUNTER_PATH . 'includes/storage/job-repository.php';
 // テスト用の求人投入ページ
 require_once LG_JOB_HUNTER_PATH . 'includes/admin/test-import-page.php';
 
+// 外部HTMLの取得処理
+require_once LG_JOB_HUNTER_PATH . 'includes/crawler/fetcher.php';
+
 // HTML解析担当
 require_once LG_JOB_HUNTER_PATH . 'includes/crawler/parser.php';
