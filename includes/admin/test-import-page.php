@@ -108,49 +108,60 @@ function lgjh_render_test_import_page()
         }
 
         if ($test_action === 'import_first_search_result_job') {
-            $sample_file_path = LG_JOB_HUNTER_PATH . 'dev-samples/search-result.html';
+            // 1. 固定条件で本番検索結果HTMLを取得
+            $search_result_html = lgjh_fetch_hellowork_search_result_html();
 
-            if (!file_exists($sample_file_path)) {
-                $message = '<div class="notice notice-error"><p>検索結果サンプルHTMLが見つかりません。</p></div>';
+            if (is_wp_error($search_result_html)) {
+                $message = '<div class="notice notice-error"><p>'
+                    . esc_html($search_result_html->get_error_message())
+                    . '</p></div>';
             } else {
-                $search_result_html = file_get_contents($sample_file_path);
+                // 2. 検索結果HTMLから詳細URL一覧を抽出
+                $detail_urls = lgjh_parse_hellowork_search_result_urls($search_result_html);
 
-                if ($search_result_html === false || empty($search_result_html)) {
-                    $message = '<div class="notice notice-error"><p>検索結果サンプルHTMLを読み込めませんでした。</p></div>';
+                if (empty($detail_urls)) {
+                    $message = '<div class="notice notice-error"><p>詳細URLを抽出できませんでした。</p></div>';
                 } else {
-                    $detail_urls = lgjh_parse_hellowork_search_result_urls($search_result_html);
+                    // 3. 確認用に詳細URL一覧を保存
+                    lgjh_save_debug_detail_urls($detail_urls);
 
-                    if (empty($detail_urls)) {
-                        $message = '<div class="notice notice-error"><p>詳細URLを抽出できませんでした。</p></div>';
+                    // 4. まずは先頭1件だけ処理する
+                    $first_detail_url = $detail_urls[0];
+
+                    // 5. 詳細ページHTMLを取得
+                    $detail_html = lgjh_fetch_html($first_detail_url);
+
+                    if (is_wp_error($detail_html)) {
+                        $message = '<div class="notice notice-error"><p>'
+                            . esc_html($detail_html->get_error_message())
+                            . '</p></div>';
                     } else {
-                        $first_detail_url = $detail_urls[0];
+                        // 6. 取得した詳細HTMLをデバッグ保存
+                        file_put_contents(
+                            WP_CONTENT_DIR . '/debug-hellowork-detail.html',
+                            $detail_html
+                        );
 
-                        $detail_html = lgjh_fetch_html($first_detail_url);
+                        // 7. 詳細HTMLから求人データを解析
+                        $job_data = lgjh_parse_hellowork_detail_html($detail_html, $first_detail_url);
 
-                        if (is_wp_error($detail_html)) {
-                            $message = '<div class="notice notice-error"><p>'
-                                . esc_html($detail_html->get_error_message())
-                                . '</p></div>';
+                        if (empty($job_data)) {
+                            $message = '<div class="notice notice-error"><p>求人データを解析できませんでした。</p></div>';
                         } else {
-                            $job_data = lgjh_parse_hellowork_detail_html($detail_html, $first_detail_url);
+                            // 8. カスタム投稿として保存
+                            $result = lgjh_save_job_from_data($job_data);
 
-                            if (empty($job_data)) {
-                                $message = '<div class="notice notice-error"><p>求人データを解析できませんでした。</p></div>';
+                            if (is_wp_error($result)) {
+                                $message = '<div class="notice notice-error"><p>'
+                                    . esc_html($result->get_error_message())
+                                    . '</p></div>';
                             } else {
-                                $result = lgjh_save_job_from_data($job_data);
-
-                                if (is_wp_error($result)) {
-                                    $message = '<div class="notice notice-error"><p>'
-                                        . esc_html($result->get_error_message())
-                                        . '</p></div>';
-                                } else {
-                                    $message = '<div class="notice notice-success"><p>'
-                                        . '検索結果HTMLの先頭1件を保存しました。投稿ID: '
-                                        . esc_html($result)
-                                        . '</p><p>取得URL: '
-                                        . esc_html($first_detail_url)
-                                        . '</p></div>';
-                                }
+                                $message = '<div class="notice notice-success"><p>'
+                                    . '本番検索結果の先頭1件を保存しました。投稿ID: '
+                                    . esc_html($result)
+                                    . '</p><p>取得URL: '
+                                    . esc_html($first_detail_url)
+                                    . '</p></div>';
                             }
                         }
                     }
@@ -182,6 +193,7 @@ function lgjh_render_test_import_page()
             }
         }
     }
+
 ?>
 
     <div class="wrap">
@@ -263,6 +275,8 @@ function lgjh_render_test_import_page()
         </form>
 
         <?php if (!empty($extracted_urls)) : ?>
+            <?php // 抽出した詳細URL一覧をデバッグ用テキストとして保存
+            lgjh_save_debug_detail_urls($extracted_urls); ?>
             <h3>抽出結果</h3>
 
             <p>
@@ -282,11 +296,11 @@ function lgjh_render_test_import_page()
 
         <hr>
 
-        <h2>3. 検索結果HTMLの先頭1件を保存</h2>
+        <h2>3. 本番検索結果の先頭1件を保存</h2>
 
         <p>
-            <code>dev-samples/search-result.html</code> から詳細URLを抽出し、
-            先頭1件だけ本番詳細ページを取得して保存します。
+            固定条件で本番検索結果HTMLを取得し、
+            抽出した詳細URLの先頭1件だけ取得・解析・保存します。
         </p>
 
         <form method="post">
@@ -298,7 +312,7 @@ function lgjh_render_test_import_page()
                     name="lgjh_test_action"
                     value="import_first_search_result_job"
                     class="button button-primary">
-                    検索結果HTMLの先頭1件を保存する
+                    本番検索結果の先頭1件を保存する
                 </button>
             </p>
         </form>
@@ -334,3 +348,22 @@ function lgjh_render_test_import_page()
 
 <?php
 }
+
+/**
+     * 抽出した詳細URL一覧をデバッグ用テキストファイルに保存
+     *
+     * @param array $detail_urls 詳細ページURL一覧
+     * @return void
+     */
+    function lgjh_save_debug_detail_urls($detail_urls)
+    {
+        if (empty($detail_urls) || !is_array($detail_urls)) {
+            return;
+        }
+
+        $file_path = WP_CONTENT_DIR . '/debug-hellowork-detail-urls.txt';
+
+        $text = implode(PHP_EOL, $detail_urls);
+
+        file_put_contents($file_path, $text);
+    }

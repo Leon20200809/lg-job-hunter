@@ -55,6 +55,36 @@ function lgjh_fetch_html($url)
 }
 
 /**
+ * ハローワーク検索ページを初期化してCookieを取得
+ *
+ * @return array|WP_Error Cookie配列
+ */
+function lgjh_fetch_hellowork_init_cookies()
+{
+    $init_url = 'https://www.hellowork.mhlw.go.jp/kensaku/GECA110010.do?screenId=GECA110010&action=searchBtn&initDisp=&searchClear=1';
+
+    $response = wp_remote_get($init_url, [
+        'timeout' => 20,
+        'headers' => [
+            'User-Agent' => 'LG Job Hunter/0.1.0; WordPress Plugin',
+        ],
+    ]);
+
+    if (is_wp_error($response)) {
+        return $response;
+    }
+
+    $html = wp_remote_retrieve_body($response);
+
+    file_put_contents(
+        WP_CONTENT_DIR . '/debug-hellowork-init.html',
+        $html
+    );
+
+    return wp_remote_retrieve_cookies($response);
+}
+
+/**
  * ハローワーク検索結果HTMLを固定条件で取得する
  *
  * 役割:
@@ -65,48 +95,89 @@ function lgjh_fetch_html($url)
  */
 function lgjh_fetch_hellowork_search_result_html()
 {
-    $url = 'https://www.hellowork.mhlw.go.jp/kensaku/GECA110010.do';
+    $search_url = 'https://www.hellowork.mhlw.go.jp/kensaku/GECA110010.do';
+
+    $cookies = lgjh_fetch_hellowork_init_cookies();
+
+    if (is_wp_error($cookies)) {
+        return $cookies;
+    }
 
     $body = [
-        // 求職番号
-        'kSNoJo' => '',
-        'kSNoGe' => '',
+    // 求職番号
+    'kSNoJo' => '',
+    'kSNoGe' => '',
 
-        // 求人区分
-        'kjKbnRadioBtn' => '1',
+    // 求人区分
+    'kjKbnRadioBtn' => '1',
 
-        // 就業場所：大阪府
-        'todohukenHidden' => '27',
-        'ensenHidden' => '',
-        'roudousijyoHidden' => '',
+    // 就業場所：大阪府
+    'todohukenHidden' => '27',
+    'ensenHidden' => '',
+    'roudousijyoHidden' => '',
 
-        // フリーワード
-        'freeWordInput' => 'ＰＨＰ',
-        'freeWordRadioBtn' => '0',
-        'nOTKNSKFreeWordInput' => '',
+    // フリーワード
+    'freeWordInput' => 'ＰＨＰ',
+    'nOTKNSKFreeWordInput' => '',
 
-        // 職種：IT・Web・エンジニア
-        'daiEasyShokusyuBox' => '11',
-        'easyShokusyuBox' => '1100',
+    // 職種：IT・Web・エンジニア
+    'daiEasyShokusyuBox' => '11',
+    'easyShokusyuBox' => '1100',
 
-        // 検索ボタン
-        'searchBtn' => '検索する',
+    // 検索ボタン
+    'searchBtn' => ' 検索する',
 
-        // 表示・並び順
-        'fwListNaviSort' => '1',
-        'fwListNaviDisp' => '30',
+    // 求人番号検索欄
+    'kJNoJo1' => '',
+    'kJNoGe1' => '',
+    'kJNoJo2' => '',
+    'kJNoGe2' => '',
+    'kJNoJo3' => '',
+    'kJNoGe3' => '',
+    'kJNoJo4' => '',
+    'kJNoGe4' => '',
+    'kJNoJo5' => '',
+    'kJNoGe5' => '',
 
-        // 画面制御
-        'screenId' => 'GECA110010',
-        'action' => '',
-        'searchClear' => '0',
-        'summaryDisp' => 'true',
-        'searchInitDisp' => '1',
-        'preCheckFlg' => 'false',
-    ];
+    // 事業所番号検索欄
+    'jGSHNoJo' => '',
+    'jGSHNoChuu' => '',
+    'jGSHNoGe' => '',
 
-    $response = wp_remote_post($url, [
+    // 件数・団体ID
+    'kyujinkensu' => '0',
+    'iNFTeikyoRiyoDantaiID' => '',
+
+    // 画面制御
+    'searchClear' => '1',
+    'kiboSuruSKSU1Hidden' => '',
+    'kiboSuruSKSU2Hidden' => '',
+    'kiboSuruSKSU3Hidden' => '',
+    'summaryDisp' => 'false',
+    'searchInitDisp' => '1',
+    'hiddenViewedKyujinList' => '',
+    'CHECKEDKJNOLIST' => '',
+    'screenId' => 'GECA110010',
+    'action' => '',
+
+    // 補助入力系
+    'codeAssistType' => '',
+    'codeAssistKind' => '',
+    'codeAssistCode' => '',
+    'codeAssistItemCode' => '',
+    'codeAssistItemName' => '',
+    'codeAssistDivide' => '',
+
+    // ボタン許可リストっぽいhidden
+    'maba_vrbs' => 'infTkRiyoDantaiBtn,searchShosaiBtn,searchBtn,searchNoBtn,searchClearBtn,searchNoClearBtn,searchNoClearBtn_mobile,dispDetailBtn,kyujinhyoBtn,checkedKyujinViewBtn,checkedKyujinhyoIppanBtn,checkedKyujinhyoDsBtn,changeSearchCond',
+
+    // 事前チェック
+    'preCheckFlg' => 'false',
+];
+
+    $response = wp_remote_post($search_url, [
         'timeout' => 20,
+        'cookies' => $cookies,
         'headers' => [
             'User-Agent' => 'LG Job Hunter/0.1.0; WordPress Plugin',
             'Content-Type' => 'application/x-www-form-urlencoded',
@@ -128,6 +199,11 @@ function lgjh_fetch_hellowork_search_result_html()
     }
 
     $html = wp_remote_retrieve_body($response);
+
+    file_put_contents(
+        WP_CONTENT_DIR . '/debug-hellowork-search-result.html',
+        $html
+    );
 
     if (empty($html)) {
         return new WP_Error(

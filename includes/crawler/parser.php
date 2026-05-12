@@ -172,6 +172,10 @@ function lgjh_parse_hellowork_search_result_urls($html)
         return [];
     }
 
+    error_log('lgjh html length: ' . strlen($html));
+    error_log('lgjh has dispDetailBtn: ' . (strpos($html, 'dispDetailBtn') !== false ? 'yes' : 'no'));
+    error_log('lgjh has ID_dispDetailBtn: ' . (strpos($html, 'ID_dispDetailBtn') !== false ? 'yes' : 'no'));
+
     libxml_use_internal_errors(true);
 
     $dom = new DOMDocument();
@@ -179,8 +183,13 @@ function lgjh_parse_hellowork_search_result_urls($html)
 
     $xpath = new DOMXPath($dom);
 
-    // 検索結果一覧にある「詳細を表示」リンクを全部取得
-    $link_nodes = $xpath->query('//a[@id="ID_dispDetailBtn"]');
+    /**
+     * 「詳細を表示」リンクだけを取得する
+     *
+     * ハローワークの検索結果HTMLでは、
+     * 詳細リンクのhrefに action=dispDetailBtn が含まれる。
+     */
+    $link_nodes = $xpath->query('//a[contains(@href, "action=dispDetailBtn")]');
 
     $detail_urls = [];
 
@@ -195,7 +204,13 @@ function lgjh_parse_hellowork_search_result_urls($html)
             continue;
         }
 
-        $detail_urls[] = lgjh_build_hellowork_absolute_url($href);
+        $detail_url = lgjh_build_hellowork_absolute_url($href);
+
+        if (empty($detail_url)) {
+            continue;
+        }
+
+        $detail_urls[] = $detail_url;
     }
 
     libxml_clear_errors();
@@ -215,13 +230,24 @@ function lgjh_build_hellowork_absolute_url($href)
         return '';
     }
 
+    // HTMLエンティティをURLとして扱える形に戻す
+    $href = html_entity_decode($href, ENT_QUOTES, 'UTF-8');
+
     // すでに絶対URLならそのまま返す
     if (preg_match('/^https?:\/\//', $href)) {
         return esc_url_raw($href);
     }
 
     // "./GECA110010.do?..." の "./" を取り除く
-    $href = preg_replace('/^\.\//', '', $href);
+    if (strpos($href, './') === 0) {
+        $href = substr($href, 2);
+    }
 
+    // "/kensaku/GECA110010.do?..." のような形式に対応
+    if (strpos($href, '/kensaku/') === 0) {
+        return esc_url_raw('https://www.hellowork.mhlw.go.jp' . $href);
+    }
+
+    // "GECA110010.do?..." のような形式に対応
     return esc_url_raw('https://www.hellowork.mhlw.go.jp/kensaku/' . $href);
 }
