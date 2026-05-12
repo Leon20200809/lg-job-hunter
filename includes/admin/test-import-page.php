@@ -157,6 +157,30 @@ function lgjh_render_test_import_page()
                 }
             }
         }
+
+        if ($test_action === 'fetch_search_result_urls') {
+            $html = lgjh_fetch_hellowork_search_result_html();
+
+            if (is_wp_error($html)) {
+                $message = '<div class="notice notice-error"><p>'
+                    . esc_html($html->get_error_message())
+                    . '</p></div>';
+            } else {
+                $extracted_urls = lgjh_parse_hellowork_search_result_urls($html);
+
+                if (empty($extracted_urls)) {
+                    $message = '<div class="notice notice-warning"><p>'
+                        . '検索結果HTMLは取得できましたが、詳細URLを抽出できませんでした。'
+                        . '</p></div>';
+                } else {
+                    $message = '<div class="notice notice-success"><p>'
+                        . '固定条件の検索結果HTMLから詳細URLを '
+                        . esc_html(count($extracted_urls))
+                        . ' 件抽出しました。'
+                        . '</p></div>';
+                }
+            }
+        }
     }
 ?>
 
@@ -278,6 +302,34 @@ function lgjh_render_test_import_page()
                 </button>
             </p>
         </form>
+
+        <hr>
+
+        <h2>4. 固定条件で検索結果HTMLを取得</h2>
+
+        <p>
+            ハローワークへ固定条件で検索フォーム送信を行い、
+            返ってきた検索結果HTMLから詳細URLを抽出します。
+        </p>
+
+        <p>
+            条件は現在、<strong>大阪府 / フリーワード：ＰＨＰ / IT・Web・エンジニア / 一般求人</strong> で固定しています。
+        </p>
+
+        <form method="post">
+            <?php wp_nonce_field('lgjh_test_import', 'lgjh_test_import_nonce'); ?>
+
+            <p>
+                <button
+                    type="submit"
+                    name="lgjh_test_action"
+                    value="fetch_search_result_urls"
+                    class="button button-primary">
+                    固定条件で検索結果HTMLを取得する
+                </button>
+            </p>
+        </form>
+
     </div>
 
 <?php

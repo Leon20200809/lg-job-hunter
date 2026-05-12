@@ -28,6 +28,9 @@ require_once LG_JOB_HUNTER_PATH . 'includes/storage/job-repository.php';
 // テスト用の求人投入ページ
 require_once LG_JOB_HUNTER_PATH . 'includes/admin/test-import-page.php';
 
+//求人一覧の「応募する」ボタンHTML生成、Gmail作成画面を開くためのURL・本文を生成
+require_once LG_JOB_HUNTER_PATH . 'includes/admin/apply-mail-button.php';
+
 // 外部HTMLの取得処理
 require_once LG_JOB_HUNTER_PATH . 'includes/crawler/fetcher.php';
 
