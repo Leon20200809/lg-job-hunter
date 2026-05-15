@@ -60,6 +60,9 @@ function lgjh_render_test_import_page()
             // ボタン処理 4. 保存済み詳細URLの（現在は先頭1件）を求人として保存
             'import_first_saved_detail_url_job' => lgjh_handle_import_first_saved_detail_url_job(),
 
+            // ボタン処理 4-B. 保存済み詳細URLの先頭3件を求人として保存
+            'import_first_3_saved_detail_url_jobs' => lgjh_handle_import_first_3_saved_detail_url_jobs(),
+
 
             // 旧：詳細URLを直接入力して求人を1件保存
             'import_detail_url' => lgjh_handle_import_detail_url(),
@@ -194,7 +197,7 @@ function lgjh_render_test_import_page()
                 <button
                     type="submit"
                     name="lgjh_test_action"
-                    value="import_first_saved_detail_url_job"
+                    value="import_first_3_saved_detail_url_jobs"
                     class="button button-primary">
                     保存済み詳細URLの先頭1件を求人として保存する
                 </button>
@@ -454,7 +457,95 @@ function lgjh_handle_import_first_saved_detail_url_job()
 }
 
 /**
- * 本番検索結果の先頭1件を取得・解析・保存する
+ * 本番検索結果の先頭3件を取得・解析・保存する
+ *
+ * @return array|WP_Error 保存結果。失敗時は WP_Error。
+ */
+function lgjh_handle_import_first_3_saved_detail_url_jobs()
+{
+    // 1. 保存済み詳細URL一覧ファイルのパスを作成
+    $file_path = LG_JOB_HUNTER_PATH . '/dev-samples/debug-hellowork-detail-urls.txt';
+
+    // 2. ファイル存在チェック
+    if (!file_exists($file_path)) {
+        return '<div class="notice notice-error"><p>'
+            . '保存済み詳細URL一覧が見つかりません。先に「3. 保存済み検索結果HTMLから詳細URLを抽出」を実行してください。'
+            . '</p></div>';
+    }
+
+    // 3. 詳細URL一覧ファイルを読み込む
+    $text = file_get_contents($file_path);
+
+    if ($text === false || empty($text)) {
+        return '<div class="notice notice-error"><p>'
+            . '保存済み詳細URL一覧を読み込めませんでした。'
+            . '</p></div>';
+    }
+
+    // 4. 改行区切りのテキストを配列に変換
+    $detail_urls = array_filter(
+        array_map(
+            'trim',
+            explode(PHP_EOL, $text)
+        )
+    );
+
+    if (empty($detail_urls)) {
+        return '<div class="notice notice-error"><p>'
+            . '保存済み詳細URL一覧に有効なURLがありませんでした。'
+            . '</p></div>';
+    }
+
+    // 5. 先頭3件だけ処理する
+    $target_urls = array_slice($detail_urls, 0, 3);
+    $messages = []; // 全ての結果（成功・失敗）を格納する配列
+
+    // 6. 詳細URLから求人を保存
+    foreach ($target_urls as $detail_url) {
+        $result = lgjh_import_job_from_detail_url($detail_url);
+
+
+        if (is_wp_error($result)) {
+            // エラー時のメッセージ
+            $messages[] = '<div class="notice notice-error"><p>'
+                . '【エラー】' . esc_html($result->get_error_message())
+                . '</p><p>対象URL: ' . esc_html($detail_url) . '</p></div>';
+            continue;
+        }
+
+        $status  = $result['status'] ?? '';
+        $post_id = $result['post_id'] ?? 0;
+
+        // 成功時のメッセージ
+        if ($status === 'created') {
+            $messages[] = '<div class="notice notice-success"><p>'
+                . '求人を新規保存しました。投稿ID: ' . esc_html($post_id)
+                . '</p><p>対象URL: ' . esc_html($detail_url) . '</p></div>';
+        }
+
+        if ($status === 'skipped') {
+            $messages[] = '<div class="notice notice-warning"><p>'
+                . '重複のためスキップしました。既存投稿ID: ' . esc_html($post_id)
+                . '</p><p>対象URL: ' . esc_html($detail_url) . '</p></div>';
+        }
+    }
+
+    // 7. 全てのメッセージを結合して返す
+    $detail_url_count = count($detail_urls);
+    $target_url_count = count($target_urls);
+    $remaining_count = $detail_url_count - $target_url_count;
+
+    $summary = '<div class="notice notice-info"><p>'
+        . '詳細URL総数: ' . esc_html($detail_url_count) . ' 件 / '
+        . '今回の処理対象: ' . esc_html($target_url_count) . ' 件 / '
+        . '未処理残り: ' . esc_html($remaining_count) . ' 件'
+        . '</p></div>';
+
+    return implode('', $messages) . $summary;
+}
+
+/**
+ * 開発用 本番検索結果の先頭1件を取得・解析・保存する
  *
  * @return string 管理画面に表示するメッセージHTML
  */
@@ -502,6 +593,8 @@ function lgjh_handle_import_first_search_result_job()
     }
     return $message;
 }
+
+
 
 /**
  * 入力されたハローワーク詳細URLから求人を取得・解析・保存する
@@ -557,7 +650,7 @@ function lgjh_handle_import_detail_url()
  * 失敗時は WP_Error を返す。
  *
  * @param string $detail_url 求人詳細ページのURL。
- * @return int|WP_Error 保存成功時は投稿ID、失敗時は WP_Error。
+ * @return array|WP_Error 保存成功時は投稿ID配列、失敗時は WP_Error。
  */
 function lgjh_import_job_from_detail_url($detail_url)
 {
@@ -601,11 +694,18 @@ function lgjh_import_job_from_detail_url($detail_url)
         return $result;
     }
 
+    if (!is_array($result)) {
+        return new WP_Error(
+            'lgjh_invalid_save_result',
+            '求人保存処理の返り値が不正です。'
+        );
+    }
+
     return $result;
 }
 
 /**
- * 固定条件の検索結果HTMLから詳細URL一覧を抽出するテスト処理。
+ * 開発用 固定条件の検索結果HTMLから詳細URL一覧を抽出するテスト処理。
  *
  * @return string 管理画面に表示するメッセージHTML。
  */
@@ -621,6 +721,7 @@ function lgjh_handle_fetch_search_result_urls()
     }
 
     // 2. 検索結果HTMLから詳細URL一覧を抽出
+    $extracted_urls = "";
     $extracted_urls = lgjh_parse_hellowork_search_result_urls($html);
 
     if (empty($extracted_urls)) {

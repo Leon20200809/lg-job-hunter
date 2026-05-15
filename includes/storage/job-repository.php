@@ -48,8 +48,12 @@ function lgjh_find_job_by_url($job_url)
 /**
  * 求人データを保存する
  *
+ * 新規保存時は status=created の配列を返す。
+ * 既存求人が見つかった場合は status=skipped の配列を返す。
+ * 保存処理で失敗した場合は WP_Error を返す。
+ *
  * @param array $job_data 求人データ
- * @return int|WP_Error 保存した投稿ID。失敗時は WP_Error
+ * @return array|WP_Error 保存結果。失敗時は WP_Error
  */
 function lgjh_save_job_from_data($job_data)
 {
@@ -87,7 +91,12 @@ function lgjh_save_job_from_data($job_data)
     $existing_post_id = lgjh_find_job_by_url($job_url);
 
     if ($existing_post_id) {
-        return $existing_post_id;
+        return [
+            'status'  => 'skipped',
+            'reason'  => 'duplicate',
+            'post_id' => $existing_post_id,
+            'job_url' => esc_url_raw($job_url),
+        ];
     }
 
     $post_id = wp_insert_post([
@@ -109,5 +118,9 @@ function lgjh_save_job_from_data($job_data)
     update_post_meta($post_id, '_lgjh_employment_type', sanitize_text_field($employment_type));
     update_post_meta($post_id, '_lgjh_status', sanitize_text_field($status));
 
-    return $post_id;
+    return [
+        'status'  => 'created',
+        'post_id' => $post_id,
+        'job_url' => esc_url_raw($job_url),
+    ];
 }
