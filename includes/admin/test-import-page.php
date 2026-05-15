@@ -38,6 +38,7 @@ function lgjh_render_test_import_page()
 {
     $message = '';
     $input_url = '';
+    $limit = 15;
 
     if (
         isset($_POST['lgjh_test_import_nonce']) &&
@@ -62,6 +63,9 @@ function lgjh_render_test_import_page()
 
             // ボタン処理 4-B. 保存済み詳細URLの先頭3件を求人として保存
             'import_first_3_saved_detail_url_jobs' => lgjh_handle_import_first_3_saved_detail_url_jobs(),
+
+            // ボタン処理 4-C. 保存済み詳細URLの先頭3件を求人として保存
+            'import_first_limitval_saved_detail_url_jobs' => lgjh_handle_import_saved_detail_url_jobs($limit),
 
 
             // 旧：詳細URLを直接入力して求人を1件保存
@@ -197,7 +201,7 @@ function lgjh_render_test_import_page()
                 <button
                     type="submit"
                     name="lgjh_test_action"
-                    value="import_first_3_saved_detail_url_jobs"
+                    value="import_first_limitval_saved_detail_url_jobs"
                     class="button button-primary">
                     保存済み詳細URLの先頭1件を求人として保存する
                 </button>
@@ -498,6 +502,95 @@ function lgjh_handle_import_first_3_saved_detail_url_jobs()
 
     // 5. 先頭3件だけ処理する
     $target_urls = array_slice($detail_urls, 0, 3);
+    $messages = []; // 全ての結果（成功・失敗）を格納する配列
+
+    // 6. 詳細URLから求人を保存
+    foreach ($target_urls as $detail_url) {
+        $result = lgjh_import_job_from_detail_url($detail_url);
+
+
+        if (is_wp_error($result)) {
+            // エラー時のメッセージ
+            $messages[] = '<div class="notice notice-error"><p>'
+                . '【エラー】' . esc_html($result->get_error_message())
+                . '</p><p>対象URL: ' . esc_html($detail_url) . '</p></div>';
+            continue;
+        }
+
+        $status  = $result['status'] ?? '';
+        $post_id = $result['post_id'] ?? 0;
+
+        // 成功時のメッセージ
+        if ($status === 'created') {
+            $messages[] = '<div class="notice notice-success"><p>'
+                . '求人を新規保存しました。投稿ID: ' . esc_html($post_id)
+                . '</p><p>対象URL: ' . esc_html($detail_url) . '</p></div>';
+        }
+
+        if ($status === 'skipped') {
+            $messages[] = '<div class="notice notice-warning"><p>'
+                . '重複のためスキップしました。既存投稿ID: ' . esc_html($post_id)
+                . '</p><p>対象URL: ' . esc_html($detail_url) . '</p></div>';
+        }
+    }
+
+    // 7. 全てのメッセージを結合して返す
+    $detail_url_count = count($detail_urls);
+    $target_url_count = count($target_urls);
+    $remaining_count = $detail_url_count - $target_url_count;
+
+    $summary = '<div class="notice notice-info"><p>'
+        . '詳細URL総数: ' . esc_html($detail_url_count) . ' 件 / '
+        . '今回の処理対象: ' . esc_html($target_url_count) . ' 件 / '
+        . '未処理残り: ' . esc_html($remaining_count) . ' 件'
+        . '</p></div>';
+
+    return implode('', $messages) . $summary;
+}
+
+/**
+ * 保存済み詳細URL一覧から先頭指定件数分の求人を取得・解析・保存する。
+ *
+ * @param int $limit 保存する件数。
+ * @return string 管理画面に表示するメッセージHTML。
+ */
+function lgjh_handle_import_saved_detail_url_jobs($limit)
+{
+    // 1. 保存済み詳細URL一覧ファイルのパスを作成
+    $file_path = LG_JOB_HUNTER_PATH . '/dev-samples/debug-hellowork-detail-urls.txt';
+
+    // 2. ファイル存在チェック
+    if (!file_exists($file_path)) {
+        return '<div class="notice notice-error"><p>'
+            . '保存済み詳細URL一覧が見つかりません。先に「3. 保存済み検索結果HTMLから詳細URLを抽出」を実行してください。'
+            . '</p></div>';
+    }
+
+    // 3. 詳細URL一覧ファイルを読み込む
+    $text = file_get_contents($file_path);
+
+    if ($text === false || empty($text)) {
+        return '<div class="notice notice-error"><p>'
+            . '保存済み詳細URL一覧を読み込めませんでした。'
+            . '</p></div>';
+    }
+
+    // 4. 改行区切りのテキストを配列に変換
+    $detail_urls = array_filter(
+        array_map(
+            'trim',
+            explode(PHP_EOL, $text)
+        )
+    );
+
+    if (empty($detail_urls)) {
+        return '<div class="notice notice-error"><p>'
+            . '保存済み詳細URL一覧に有効なURLがありませんでした。'
+            . '</p></div>';
+    }
+
+    // 5. 先頭$limit件処理する
+    $target_urls = array_slice($detail_urls, 0, $limit);
     $messages = []; // 全ての結果（成功・失敗）を格納する配列
 
     // 6. 詳細URLから求人を保存
