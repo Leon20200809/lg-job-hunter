@@ -38,7 +38,7 @@ function lgjh_render_test_import_page()
 {
     $message = '';
     $input_url = '';
-    $limit = 15;
+    $limit = 30;
 
     if (
         isset($_POST['lgjh_test_import_nonce']) &&
@@ -49,8 +49,8 @@ function lgjh_render_test_import_page()
             : '';
 
         $message = match ($test_action) {
-            // ボタン処理 1. 検索条件の指定
-            // 現在は表示のみなのでPOST処理なし
+            // ボタン処理 1. 検索条件を保存
+            'save_search_conditions' => lgjh_handle_save_search_conditions(),
 
             // ボタン処理 2. 固定条件で検索結果HTMLを取得・保存
             'fetch_and_save_search_result_html' => lgjh_handle_fetch_and_save_search_result_html(),
@@ -78,7 +78,7 @@ function lgjh_render_test_import_page()
 ?>
 
     <div class="wrap">
-        <h1>テスト投入</h1>
+        <h1>LG Job Hunter Dashboard</h1>
 
         <?php echo $message; ?>
 
@@ -89,33 +89,105 @@ function lgjh_render_test_import_page()
         <hr>
 
         <!-- 1 -->
-        <h2>1. 検索条件の確認</h2>
+        <?php $search_conditions = lgjh_get_search_conditions(); ?>
+
+        <hr>
+
+        <!-- 1 -->
+        <h2>1. 検索条件の設定・確認</h2>
 
         <p>
-            現在は検索条件を固定しています。
-            将来的には、この画面から都道府県・フリーワード・職種などを設定できるようにします。
+            現在の検索条件を確認・変更します。
+            まずはフリーワードと検索方式だけを保存対象にしています。
         </p>
 
-        <table class="widefat striped" style="max-width: 900px;">
-            <tbody>
-                <tr>
-                    <th scope="row">都道府県</th>
-                    <td>大阪府</td>
-                </tr>
-                <tr>
-                    <th scope="row">フリーワード</th>
-                    <td>ＰＨＰ</td>
-                </tr>
-                <tr>
-                    <th scope="row">職種</th>
-                    <td>IT・Web・エンジニア</td>
-                </tr>
-                <tr>
-                    <th scope="row">求人区分</th>
-                    <td>一般求人</td>
-                </tr>
-            </tbody>
-        </table>
+        <form method="post">
+            <?php wp_nonce_field('lgjh_test_import', 'lgjh_test_import_nonce'); ?>
+
+            <table class="form-table" style="max-width: 900px;">
+                <tbody>
+                    <tr>
+                        <th scope="row">都道府県</th>
+                        <td>
+                            <?php echo esc_html($search_conditions['prefecture_label']); ?>
+                            <p class="description">現在は固定です。</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label for="lgjh_keyword">フリーワード</label>
+                        </th>
+                        <td>
+                            <input
+                                type="text"
+                                id="lgjh_keyword"
+                                name="lgjh_keyword"
+                                value="<?php echo esc_attr($search_conditions['keyword']); ?>"
+                                class="regular-text"
+                                style="width: 100%; max-width: 600px;">
+
+                            <p class="description">
+                                例：PHP JavaScript Laravel WordPress
+                            </p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">検索方式</th>
+                        <td>
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="lgjh_keyword_mode"
+                                    value="or"
+                                    <?php checked($search_conditions['keyword_mode'], 'or'); ?>>
+                                OR検索
+                            </label>
+
+                            <br>
+
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="lgjh_keyword_mode"
+                                    value="and"
+                                    <?php checked($search_conditions['keyword_mode'], 'and'); ?>>
+                                AND検索
+                            </label>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">職種</th>
+                        <td>
+                            <?php echo esc_html($search_conditions['job_category_label']); ?>
+                            <p class="description">現在は固定です。</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">求人区分</th>
+                        <td>
+                            <?php echo esc_html($search_conditions['job_type_label']); ?>
+                            <p class="description">現在は固定です。</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                <button
+                    type="submit"
+                    name="lgjh_test_action"
+                    value="save_search_conditions"
+                    class="button button-primary">
+                    検索条件を保存する
+                </button>
+            </p>
+        </form>
+
+        <hr>
 
         <hr>
 
@@ -182,11 +254,11 @@ function lgjh_render_test_import_page()
 
         <!-- 4 -->
         <!-- lgjh_handle_import_first_saved_detail_url_job() -->
-        <h2>4. 保存済み詳細URLの先頭1件を求人として保存</h2>
+        <h2>4. 保存済み詳細URLの先頭30件を求人として保存</h2>
 
         <p>
             <code>dev-samples/debug-hellowork-detail-urls.txt</code> を読み込み、
-            保存済みの詳細URL一覧から先頭1件だけを取得します。
+            保存済みの詳細URL一覧から先頭30件を取得します。
         </p>
 
         <p>
@@ -203,7 +275,7 @@ function lgjh_render_test_import_page()
                     name="lgjh_test_action"
                     value="import_first_limitval_saved_detail_url_jobs"
                     class="button button-primary">
-                    保存済み詳細URLの先頭1件を求人として保存する
+                    保存済み詳細URL一覧を求人として保存する
                 </button>
             </p>
         </form>
@@ -838,3 +910,5 @@ function lgjh_handle_fetch_search_result_urls()
         . esc_html($extracted_urls[0])
         . '</p></div>';
 }
+
+

@@ -36,3 +36,6 @@ require_once LG_JOB_HUNTER_PATH . 'includes/crawler/fetcher.php';
 
 // HTML解析担当
 require_once LG_JOB_HUNTER_PATH . 'includes/crawler/parser.php';
+
+// 検索条件管理担当
+require_once LG_JOB_HUNTER_PATH . 'includes/settings/search-conditions.php';
