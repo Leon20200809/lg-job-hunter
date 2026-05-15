@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 外部HTML取得処理
  *
@@ -95,6 +96,11 @@ function lgjh_fetch_hellowork_init_cookies()
  */
 function lgjh_fetch_hellowork_search_result_html()
 {
+    $conditions = lgjh_get_search_conditions();
+    $keyword_for_hellowork = lgjh_convert_keyword_for_hellowork(
+        $conditions['keyword'] ?? ''
+    );
+
     $search_url = 'https://www.hellowork.mhlw.go.jp/kensaku/GECA110010.do';
 
     $cookies = lgjh_fetch_hellowork_init_cookies();
@@ -104,76 +110,106 @@ function lgjh_fetch_hellowork_search_result_html()
     }
 
     $body = [
-    // 求職番号
-    'kSNoJo' => '',
-    'kSNoGe' => '',
+        // 求職番号
+        'kSNoJo' => '',
+        'kSNoGe' => '',
 
-    // 求人区分
-    'kjKbnRadioBtn' => '1',
+        // 求人区分
+        'kjKbnRadioBtn' => $conditions['job_type'] ?? '1',
 
-    // 就業場所：大阪府
-    'todohukenHidden' => '27',
-    'ensenHidden' => '',
-    'roudousijyoHidden' => '',
+        // 就業場所
+        'todohukenHidden' => $conditions['prefecture_code'] ?? '27',
+        'ensenHidden' => '',
+        'roudousijyoHidden' => '',
 
-    // フリーワード
-    'freeWordInput' => 'ＰＨＰ',
-    'nOTKNSKFreeWordInput' => '',
+        // フリーワード
+        'freeWordInput' => $keyword_for_hellowork,
+        'freeWordRadioBtn' => (($conditions['keyword_mode'] ?? 'or') === 'or') ? '0' : '1',
+        'nOTKNSKFreeWordInput' => '',
 
-    // 職種：IT・Web・エンジニア
-    'daiEasyShokusyuBox' => '11',
-    'easyShokusyuBox' => '1100',
+        // 職種
+        // 現在は広く拾うため未指定
+        'daiEasyShokusyuBox' => $conditions['job_category_large'] ?? '',
+        'easyShokusyuBox' => $conditions['job_category_small'] ?? '',
 
-    // 検索ボタン
-    'searchBtn' => ' 検索する',
+        // 年齢・在宅勤務・勤務条件など
+        'nenreiInput' => '',
+        'tatZngyCKBox' => $conditions['remote_work'] ?? '1',
+        'menkyoSkku1In' => '',
+        'menkyoSkku2In' => '',
+        'menkyoSkku3In' => '',
+        'shgJnStaJiCmbBoxHH' => '',
+        'shgJnStaFunCmbBoxMM' => '',
+        'shgJnEndJiCmbBoxHH' => '',
+        'shgJnEndFunCmbBoxMM' => '',
+        'jkgiRadioBtn' => '0',
+        'tnseiRadioBtn' => '0',
+        'tnseiCmbBox' => '',
+        'jginSuRadioBtn' => '0',
+        'kiboSuruSngBrui1In' => '',
+        'kiboSuruSngBrui2In' => '',
+        'kiboSuruSngBrui3In' => '',
 
-    // 求人番号検索欄
-    'kJNoJo1' => '',
-    'kJNoGe1' => '',
-    'kJNoJo2' => '',
-    'kJNoGe2' => '',
-    'kJNoJo3' => '',
-    'kJNoGe3' => '',
-    'kJNoJo4' => '',
-    'kJNoGe4' => '',
-    'kJNoJo5' => '',
-    'kJNoGe5' => '',
+        // 検索ボタン
+        'searchBtn' => ' 検索する',
 
-    // 事業所番号検索欄
-    'jGSHNoJo' => '',
-    'jGSHNoChuu' => '',
-    'jGSHNoGe' => '',
+        // 求人番号検索欄
+        'kJNoJo1' => '',
+        'kJNoGe1' => '',
+        'kJNoJo2' => '',
+        'kJNoGe2' => '',
+        'kJNoJo3' => '',
+        'kJNoGe3' => '',
+        'kJNoJo4' => '',
+        'kJNoGe4' => '',
+        'kJNoJo5' => '',
+        'kJNoGe5' => '',
 
-    // 件数・団体ID
-    'kyujinkensu' => '0',
-    'iNFTeikyoRiyoDantaiID' => '',
+        // 事業所番号検索欄
+        'jGSHNoJo' => '',
+        'jGSHNoChuu' => '',
+        'jGSHNoGe' => '',
 
-    // 画面制御
-    'searchClear' => '1',
-    'kiboSuruSKSU1Hidden' => '',
-    'kiboSuruSKSU2Hidden' => '',
-    'kiboSuruSKSU3Hidden' => '',
-    'summaryDisp' => 'false',
-    'searchInitDisp' => '1',
-    'hiddenViewedKyujinList' => '',
-    'CHECKEDKJNOLIST' => '',
-    'screenId' => 'GECA110010',
-    'action' => '',
+        // 一覧表示設定
+        'fwListNaviSortTop' => '1',
+        'fwListNaviDispTop' => $conditions['display_count'] ?? '50',
+        'fwListNaviSortBtm' => '1',
+        'fwListNaviDispBtm' => $conditions['display_count'] ?? '50',
+        'fwListNowPage' => '1',
+        'fwListLeftPage' => '1',
+        'fwListNaviDisp' => $conditions['display_count'] ?? '50',
+        'fwListNaviSort' => '1',
 
-    // 補助入力系
-    'codeAssistType' => '',
-    'codeAssistKind' => '',
-    'codeAssistCode' => '',
-    'codeAssistItemCode' => '',
-    'codeAssistItemName' => '',
-    'codeAssistDivide' => '',
+        // 件数・団体ID
+        'kyujinkensu' => '0',
+        'iNFTeikyoRiyoDantaiID' => '',
 
-    // ボタン許可リストっぽいhidden
-    'maba_vrbs' => 'infTkRiyoDantaiBtn,searchShosaiBtn,searchBtn,searchNoBtn,searchClearBtn,searchNoClearBtn,searchNoClearBtn_mobile,dispDetailBtn,kyujinhyoBtn,checkedKyujinViewBtn,checkedKyujinhyoIppanBtn,checkedKyujinhyoDsBtn,changeSearchCond',
+        // 画面制御
+        'searchClear' => '1',
+        'kiboSuruSKSU1Hidden' => '',
+        'kiboSuruSKSU2Hidden' => '',
+        'kiboSuruSKSU3Hidden' => '',
+        'summaryDisp' => 'false',
+        'searchInitDisp' => '1',
+        'hiddenViewedKyujinList' => '',
+        'CHECKEDKJNOLIST' => '',
+        'screenId' => 'GECA110010',
+        'action' => '',
 
-    // 事前チェック
-    'preCheckFlg' => 'false',
-];
+        // 補助入力系
+        'codeAssistType' => '',
+        'codeAssistKind' => '',
+        'codeAssistCode' => '',
+        'codeAssistItemCode' => '',
+        'codeAssistItemName' => '',
+        'codeAssistDivide' => '',
+
+        // ボタン許可リストっぽいhidden
+        'maba_vrbs' => 'infTkRiyoDantaiBtn,searchShosaiBtn,searchBtn,searchNoBtn,searchClearBtn,searchNoClearBtn_mobile,dispDetailBtn,kyujinhyoBtn,checkedKyujinViewBtn,checkedKyujinhyoIppanBtn,checkedKyujinhyoDsBtn,changeSearchCond',
+
+        // 事前チェック
+        'preCheckFlg' => 'false',
+    ];
 
     $response = wp_remote_post($search_url, [
         'timeout' => 20,

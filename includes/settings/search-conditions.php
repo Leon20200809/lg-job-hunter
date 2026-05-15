@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 検索条件のデフォルト値を取得する。
  *
@@ -9,13 +10,21 @@ function lgjh_get_default_search_conditions()
     return [
         'prefecture_code' => '27',
         'prefecture_label' => '大阪府',
-        'keyword' => 'PHP JavaScript Laravel WordPress',
+
+        'keyword' => 'WordPress PHP',
         'keyword_mode' => 'or',
+
         'job_type' => '1',
         'job_type_label' => '一般求人',
-        'job_category_large' => '11',
-        'job_category_small' => '1100',
-        'job_category_label' => 'IT・Web・エンジニア',
+
+        'remote_work' => '1',
+        'remote_work_label' => '在宅勤務を含む',
+
+        'display_count' => '50',
+
+        'job_category_large' => '',
+        'job_category_small' => '',
+        'job_category_label' => '指定なし',
     ];
 }
 
@@ -75,4 +84,31 @@ function lgjh_handle_save_search_conditions()
     return '<div class="notice notice-success"><p>'
         . '検索条件を保存しました。'
         . '</p></div>';
+}
+
+/**
+ * ハローワーク送信用にフリーワードを変換する。
+ *
+ * 管理画面では半角英数字で入力できるようにし、
+ * ハローワーク送信直前に全角英数字へ変換する。
+ *
+ * 例:
+ * PHP JavaScript Laravel WordPress
+ * ↓
+ * ＰＨＰ　ＪａｖａＳｃｒｉｐｔ　Ｌａｒａｖｅｌ　ＷｏｒｄＰｒｅｓｓ
+ *
+ * @param string $keyword 管理画面で入力されたフリーワード。
+ * @return string ハローワーク送信用に変換したフリーワード。
+ */
+function lgjh_convert_keyword_for_hellowork($keyword)
+{
+    if (empty($keyword)) {
+        return '';
+    }
+
+    // 前後の空白を除去
+    $keyword = trim($keyword);
+
+    // 半角英数字・半角スペースを全角へ変換
+    return mb_convert_kana($keyword, 'ASKV', 'UTF-8');
 }
