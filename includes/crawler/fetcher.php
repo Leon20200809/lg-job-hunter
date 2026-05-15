@@ -77,7 +77,7 @@ function lgjh_fetch_hellowork_init_cookies()
     $html = wp_remote_retrieve_body($response);
 
     file_put_contents(
-        WP_CONTENT_DIR . '/debug-hellowork-init.html',
+        LG_JOB_HUNTER_PATH . '/dev-samples/debug-hellowork-init.html',
         $html
     );
 
@@ -201,7 +201,7 @@ function lgjh_fetch_hellowork_search_result_html()
     $html = wp_remote_retrieve_body($response);
 
     file_put_contents(
-        WP_CONTENT_DIR . '/debug-hellowork-search-result.html',
+        LG_JOB_HUNTER_PATH . '/dev-samples/debug-hellowork-search-result.html',
         $html
     );
 

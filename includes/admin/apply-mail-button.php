@@ -21,6 +21,7 @@ function lgjh_get_apply_button_html($post_id)
 {
     $gmail_url = lgjh_build_gmail_apply_url($post_id);
 
+    // Gmail本文の改行を保持したいので esc_attr() を使う
     return '<a class="button button-primary" href="' . esc_attr($gmail_url) . '" target="_blank" rel="noopener noreferrer">応募する</a>';
 }
 
@@ -35,11 +36,12 @@ function lgjh_build_gmail_apply_url($post_id)
     $company_name = get_post_meta($post_id, '_lgjh_company_name', true);
     $job_url      = get_post_meta($post_id, '_lgjh_job_url', true);
     $job_title    = get_the_title($post_id);
+    $resume_url = 'https://lazygenius-web-resume.vercel.app/';
 
     $to = '';
 
-    $subject = '求人応募についてのご連絡' . $company_name;
-    $body    = lgjh_build_apply_mail_body($company_name, $job_title, $job_url);
+    $subject = '求人応募についてのご連絡：' . $company_name;
+    $body    = lgjh_build_apply_mail_body($company_name, $job_title, $job_url, $resume_url);
 
     $gmail_url = 'https://mail.google.com/mail/?view=cm&fs=1'
         . '&to=' . rawurlencode($to)
@@ -56,22 +58,33 @@ function lgjh_build_gmail_apply_url($post_id)
  * @param string $job_title 求人タイトル
  * @param string $job_url 求人URL
  * @return string 応募メール本文
+ * @param string $resume_url Web履歴書URL
  */
-function lgjh_build_apply_mail_body($company_name, $job_title, $job_url)
+function lgjh_build_apply_mail_body($company_name, $job_title, $job_url, $resume_url)
 {
     $lines = [
         "{$company_name} 採用ご担当者様",
         "",
         "お世話になっております。",
-        "求人情報を拝見し、応募させていただきたくご連絡いたしました。",
+        "ハローワーク求人情報を拝見し、ぜひ応募させていただきたくご連絡いたしました。",
         "",
         "【応募求人】",
         $job_title,
         "",
-        "【求人URL】",
+        "【紹介状】",
+        "紹介状を添付いたします。",
+        "",
+        "【Web履歴書】",
+        $resume_url,
+        "",
+        "【閲覧パスワード】",
+        "※送信前に入力してください",
+        "",
+        "【求人詳細URL】",
         $job_url,
         "",
-        "何卒よろしくお願いいたします。",
+        "お忙しいところ恐れ入りますが、",
+        "書類選考のほど、何卒よろしくお願いいたします。",
     ];
 
     return implode("\r\n", $lines);

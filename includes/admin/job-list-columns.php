@@ -25,8 +25,8 @@ function lgjh_add_job_list_columns($columns)
     $new_columns['location'] = '勤務地';
     $new_columns['salary'] = '給与';
     $new_columns['status'] = '応募ステータス';
-    $new_columns['apply'] = '応募';
     $new_columns['job_url'] = '求人URL';
+    $new_columns['apply'] = '応募';
     $new_columns['date'] = $columns['date'];
 
     return $new_columns;
@@ -73,11 +73,6 @@ function lgjh_render_job_list_columns($column_name, $post_id)
         echo esc_html($status_labels[$status] ?? '未設定');
     }
 
-    // 応募ボタンカラム
-    if ($column_name === 'apply') {
-        echo lgjh_get_apply_button_html($post_id);
-    }
-
     // 求人URLカラム
     if ($column_name === 'job_url') {
         $job_url = get_post_meta($post_id, '_lgjh_job_url', true);
@@ -85,6 +80,11 @@ function lgjh_render_job_list_columns($column_name, $post_id)
         if (!empty($job_url)) {
             echo '<a href="' . esc_url($job_url) . '" target="_blank" rel="noopener noreferrer">開く</a>';
         }
+    }
+
+    // 応募ボタンカラム
+    if ($column_name === 'apply') {
+        echo lgjh_get_apply_button_html($post_id);
     }
 }
 add_action('manage_lg_job_posts_custom_column', 'lgjh_render_job_list_columns', 10, 2);
