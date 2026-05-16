@@ -16,20 +16,42 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * 求人情報メニュー配下にテスト投入ページを追加
+ * 求人情報メニュー配下に LG Job Hunter Dashboard を追加する。
+ *
+ * add_submenu_page() の引数:
+ *
+ * 第1引数 $parent_slug:
+ * - 親メニューのスラッグ
+ * - 今回はカスタム投稿タイプ lg_job の管理メニュー配下に追加する
+ *
+ * 第2引数 $page_title:
+ * - ブラウザのタイトルや管理画面のページタイトルに使われる名前
+ *
+ * 第3引数 $menu_title:
+ * - 左メニューに表示される名前
+ *
+ * 第4引数 $capability:
+ * - このページを表示できる権限
+ * - manage_options は管理者向け
+ *
+ * 第5引数 $menu_slug:
+ * - このサブメニューページ固有の識別子
+ *
+ * 第6引数 $callback:
+ * - ページ表示時に実行される関数
  */
-function lgjh_add_test_import_page()
+function lgjh_add_dashboard_page()
 {
     add_submenu_page(
         'edit.php?post_type=lg_job',
-        'テスト投入',
-        'テスト投入',
+        'LG Job Hunter Dashboard',
+        'LG Job Hunter Dashboard',
         'manage_options',
-        'lgjh-test-import',
+        'lgjh-dashboard',
         'lgjh_render_test_import_page'
     );
 }
-add_action('admin_menu', 'lgjh_add_test_import_page');
+add_action('admin_menu', 'lgjh_add_dashboard_page');
 
 /**
  * テスト投入ページを表示
@@ -51,6 +73,9 @@ function lgjh_render_test_import_page()
         $message = match ($test_action) {
             // ボタン処理 1. 検索条件を保存
             'save_search_conditions' => lgjh_handle_save_search_conditions(),
+
+            // 検索プリセットを保存
+            'save_search_preset' => lgjh_handle_save_search_preset(),
 
             // ボタン処理 2. 固定条件で検索結果HTMLを取得・保存
             'fetch_and_save_search_result_html' => lgjh_handle_fetch_and_save_search_result_html(),
@@ -86,16 +111,18 @@ function lgjh_render_test_import_page()
         <hr>
 
         <!-- 1 -->
-        <?php $search_conditions = lgjh_get_search_conditions(); ?>
-
         <hr>
 
-        <!-- 1 -->
-        <h2>1. 検索条件の設定・確認</h2>
+        <?php $search_conditions = lgjh_get_search_conditions(); ?>
+        <?php
+        $search_presets = lgjh_get_search_condition_presets();
+        $active_preset_id = lgjh_get_active_search_preset_id();
+        ?>
+        <h2>1. 検索プリセットの選択</h2>
 
         <p>
-            現在の検索条件を確認・変更します。
-            まずはフリーワードと検索方式だけを保存対象にしています。
+            使用する検索条件プリセットを選択します。
+            プリセットの中身は <code>search-conditions.php</code> の配列で管理します。
         </p>
 
         <form method="post">
@@ -104,70 +131,27 @@ function lgjh_render_test_import_page()
             <table class="form-table" style="max-width: 900px;">
                 <tbody>
                     <tr>
-                        <th scope="row">都道府県</th>
-                        <td>
-                            <?php echo esc_html($search_conditions['prefecture_label']); ?>
-                            <p class="description">現在は固定です。</p>
-                        </td>
-                    </tr>
-
-                    <tr>
                         <th scope="row">
-                            <label for="lgjh_keyword">フリーワード</label>
+                            <label for="lgjh_search_preset_id">検索プリセット</label>
                         </th>
                         <td>
-                            <input
-                                type="text"
-                                id="lgjh_keyword"
-                                name="lgjh_keyword"
-                                value="<?php echo esc_attr($search_conditions['keyword']); ?>"
+                            <select
+                                id="lgjh_search_preset_id"
+                                name="lgjh_search_preset_id"
                                 class="regular-text"
                                 style="width: 100%; max-width: 600px;">
+                                <?php foreach ($search_presets as $preset_id => $preset) : ?>
+                                    <option
+                                        value="<?php echo esc_attr($preset_id); ?>"
+                                        <?php selected($active_preset_id, $preset_id); ?>>
+                                        <?php echo esc_html($preset['preset_label']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
 
                             <p class="description">
-                                例：PHP JavaScript Laravel WordPress
+                                選択中のプリセットが、一括実行・cron実行時の検索条件として使われます。
                             </p>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <th scope="row">検索方式</th>
-                        <td>
-                            <label>
-                                <input
-                                    type="radio"
-                                    name="lgjh_keyword_mode"
-                                    value="or"
-                                    <?php checked($search_conditions['keyword_mode'], 'or'); ?>>
-                                OR検索
-                            </label>
-
-                            <br>
-
-                            <label>
-                                <input
-                                    type="radio"
-                                    name="lgjh_keyword_mode"
-                                    value="and"
-                                    <?php checked($search_conditions['keyword_mode'], 'and'); ?>>
-                                AND検索
-                            </label>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <th scope="row">職種</th>
-                        <td>
-                            <?php echo esc_html($search_conditions['job_category_label']); ?>
-                            <p class="description">現在は固定です。</p>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <th scope="row">求人区分</th>
-                        <td>
-                            <?php echo esc_html($search_conditions['job_type_label']); ?>
-                            <p class="description">現在は固定です。</p>
                         </td>
                     </tr>
                 </tbody>
@@ -177,9 +161,9 @@ function lgjh_render_test_import_page()
                 <button
                     type="submit"
                     name="lgjh_test_action"
-                    value="save_search_conditions"
+                    value="save_search_preset"
                     class="button button-primary">
-                    検索条件を保存する
+                    検索プリセットを保存する
                 </button>
             </p>
         </form>
@@ -777,8 +761,6 @@ function lgjh_handle_import_first_search_result_job()
     }
     return $message;
 }
-
-
 
 /**
  * 入力されたハローワーク詳細URLから求人を取得・解析・保存する
