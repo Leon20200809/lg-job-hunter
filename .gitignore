@@ -34,7 +34,9 @@ wp-content/backup*/
 wp-content/ai1wm-backups/
 
 # Plugin development samples
-dev-samples/
+dev-samples/*
+!dev-samples/.gitkeep
+
 *.html
 *.png
 *.jpg
