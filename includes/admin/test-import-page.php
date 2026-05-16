@@ -58,14 +58,11 @@ function lgjh_render_test_import_page()
             // ボタン処理 3. 保存済み検索結果HTMLから詳細URLを抽出
             'extract_detail_urls_from_saved_html' => lgjh_handle_extract_detail_urls_from_saved_html(),
 
-            // ボタン処理 4. 保存済み詳細URLの（現在は先頭1件）を求人として保存
-            'import_first_saved_detail_url_job' => lgjh_handle_import_first_saved_detail_url_job(),
-
-            // ボタン処理 4-B. 保存済み詳細URLの先頭3件を求人として保存
-            'import_first_3_saved_detail_url_jobs' => lgjh_handle_import_first_3_saved_detail_url_jobs(),
-
-            // ボタン処理 4-C. 保存済み詳細URLの先頭3件を求人として保存
+            // ボタン処理 4. 保存済み詳細URLの先頭3件を求人として保存
             'import_first_limitval_saved_detail_url_jobs' => lgjh_handle_import_saved_detail_url_jobs($limit),
+
+            // ボタン処理 5. 1～4の処理一気通貫ボタン（自動実行用）
+            'run_import_pipeline' => lgjh_handle_run_import_pipeline($limit),
 
 
             // 旧：詳細URLを直接入力して求人を1件保存
@@ -253,7 +250,6 @@ function lgjh_render_test_import_page()
         <hr>
 
         <!-- 4 -->
-        <!-- lgjh_handle_import_first_saved_detail_url_job() -->
         <h2>4. 保存済み詳細URLの先頭30件を求人として保存</h2>
 
         <p>
@@ -280,6 +276,29 @@ function lgjh_render_test_import_page()
             </p>
         </form>
 
+        <hr>
+        <!-- 5 -->
+        <h2>5. 自動実行ボタン</h2>
+        <p>
+            1～4の処理を一気通貫実行する
+        </p>
+
+        <form method="post">
+            <?php wp_nonce_field('lgjh_test_import', 'lgjh_test_import_nonce'); ?>
+
+            <p>
+                <button
+                    type="submit"
+                    name="lgjh_test_action"
+                    value="run_import_pipeline"
+                    class="button button-primary">
+                    1～4の処理を一気通貫実行する
+                </button>
+            </p>
+        </form>
+
+        <hr>
+        <!-- 開発用 -->
         <h2>開発用. 詳細ページURLから求人を1件保存</h2>
 
         <p>
@@ -870,6 +889,68 @@ function lgjh_import_job_from_detail_url($detail_url)
 }
 
 /**
+ * 求人取得パイプラインを実行し、管理画面表示用HTMLを返す。
+ *
+ * @param int $limit 保存する求人件数
+ * @return string 管理画面に表示するメッセージHTML
+ */
+function lgjh_handle_run_import_pipeline($limit = 30)
+{
+    $result = lgjh_run_import_pipeline($limit);
+
+    if (is_wp_error($result)) {
+        return '<div class="notice notice-error"><p>'
+            . esc_html($result->get_error_message())
+            . '</p></div>';
+    }
+
+    $summary = '<div class="notice notice-info"><p>'
+        . '詳細URL総数: ' . esc_html($result['total_urls'] ?? 0) . ' 件 / '
+        . '今回の処理対象: ' . esc_html($result['target_urls'] ?? 0) . ' 件 / '
+        . '新規保存: ' . esc_html($result['created'] ?? 0) . ' 件 / '
+        . '重複スキップ: ' . esc_html($result['skipped'] ?? 0) . ' 件 / '
+        . 'エラー: ' . esc_html($result['errors'] ?? 0) . ' 件'
+        . '</p></div>';
+
+    $items_html = '';
+
+    foreach (($result['items'] ?? []) as $item) {
+        $status  = $item['status'] ?? '';
+        $post_id = $item['post_id'] ?? 0;
+        $url     = $item['url'] ?? '';
+        $message = $item['message'] ?? '';
+
+        $notice_class = match ($status) {
+            'created' => 'notice-success',
+            'skipped' => 'notice-warning',
+            'error'   => 'notice-error',
+            default   => 'notice-info',
+        };
+
+        $items_html .= '<div class="notice ' . esc_attr($notice_class) . '"><p>'
+            . esc_html($message);
+
+        if (!empty($post_id)) {
+            $items_html .= ' 投稿ID: ' . esc_html($post_id);
+        }
+
+        $items_html .= '</p>';
+
+        if (!empty($url)) {
+            $items_html .= '<p>対象URL: '
+                . '<a href="' . esc_url($url) . '" target="_blank" rel="noopener noreferrer">'
+                . esc_html($url)
+                . '</a>'
+                . '</p>';
+        }
+
+        $items_html .= '</div>';
+    }
+
+    return $summary . $items_html;
+}
+
+/**
  * 開発用 固定条件の検索結果HTMLから詳細URL一覧を抽出するテスト処理。
  *
  * @return string 管理画面に表示するメッセージHTML。
@@ -910,5 +991,3 @@ function lgjh_handle_fetch_search_result_urls()
         . esc_html($extracted_urls[0])
         . '</p></div>';
 }
-
-

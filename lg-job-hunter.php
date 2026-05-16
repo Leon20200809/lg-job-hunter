@@ -37,5 +37,8 @@ require_once LG_JOB_HUNTER_PATH . 'includes/crawler/parser.php';
 // 検索条件管理担当
 require_once LG_JOB_HUNTER_PATH . 'includes/settings/search-conditions.php';
 
+// 自動実行関数担当
+require_once LG_JOB_HUNTER_PATH . 'includes/runner/import-pipeline.php';
+
 // テスト用の求人投入ページ
 require_once LG_JOB_HUNTER_PATH . 'includes/admin/test-import-page.php';
