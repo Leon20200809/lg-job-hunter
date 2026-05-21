@@ -873,63 +873,95 @@ function lgjh_import_job_from_detail_url($detail_url)
 /**
  * 求人取得パイプラインを実行し、管理画面表示用HTMLを返す。
  *
+ * 役割:
+ * - 一気通貫インポート処理を実行する
+ * - 実行中の二重起動を transient ロックで防ぐ
+ * - 実行結果を管理画面表示用HTMLとして返す
+ *
  * @param int $limit 保存する求人件数
  * @return string 管理画面に表示するメッセージHTML
  */
 function lgjh_handle_run_import_pipeline($limit = 30)
 {
-    $result = lgjh_run_import_pipeline($limit);
+    $lock_key = 'lgjh_import_pipeline_lock';
 
-    if (is_wp_error($result)) {
-        return '<div class="notice notice-error"><p>'
-            . esc_html($result->get_error_message())
-            . '</p></div>';
+    if (get_transient($lock_key)) {
+        return '
+            <div class="notice notice-warning">
+                <p>現在、一気通貫インポート処理を実行中です。しばらくしてから再実行してください。</p>
+            </div>
+        ';
     }
 
-    $summary = '<div class="notice notice-info"><p>'
-        . '詳細URL総数: ' . esc_html($result['total_urls'] ?? 0) . ' 件 / '
-        . '今回の処理対象: ' . esc_html($result['target_urls'] ?? 0) . ' 件 / '
-        . '新規保存: ' . esc_html($result['created'] ?? 0) . ' 件 / '
-        . '重複スキップ: ' . esc_html($result['skipped'] ?? 0) . ' 件 / '
-        . 'エラー: ' . esc_html($result['errors'] ?? 0) . ' 件'
-        . '</p></div>';
+    set_transient($lock_key, 1, 10 * MINUTE_IN_SECONDS);
 
-    $items_html = '';
+    try {
+        $result = lgjh_run_import_pipeline($limit);
 
-    foreach (($result['items'] ?? []) as $item) {
-        $status  = $item['status'] ?? '';
-        $post_id = $item['post_id'] ?? 0;
-        $url     = $item['url'] ?? '';
-        $message = $item['message'] ?? '';
-
-        $notice_class = match ($status) {
-            'created' => 'notice-success',
-            'skipped' => 'notice-warning',
-            'error'   => 'notice-error',
-            default   => 'notice-info',
-        };
-
-        $items_html .= '<div class="notice ' . esc_attr($notice_class) . '"><p>'
-            . esc_html($message);
-
-        if (!empty($post_id)) {
-            $items_html .= ' 投稿ID: ' . esc_html($post_id);
+        if (is_wp_error($result)) {
+            return '
+                <div class="notice notice-error">
+                    <p>' . esc_html($result->get_error_message()) . '</p>
+                </div>
+            ';
         }
 
-        $items_html .= '</p>';
+        $summary = '
+            <div class="notice notice-success">
+                <p>' .
+            '詳細URL総数: ' . esc_html($result['total_urls'] ?? 0) . ' 件 / ' .
+            '今回の処理対象: ' . esc_html($result['target_urls'] ?? 0) . ' 件 / ' .
+            '新規保存: ' . esc_html($result['created'] ?? 0) . ' 件 / ' .
+            '重複スキップ: ' . esc_html($result['skipped'] ?? 0) . ' 件 / ' .
+            'エラー: ' . esc_html($result['errors'] ?? 0) . ' 件' .
+            '</p>
+            </div>
+        ';
 
-        if (!empty($url)) {
-            $items_html .= '<p>対象URL: '
-                . '<a href="' . esc_url($url) . '" target="_blank" rel="noopener noreferrer">'
-                . esc_html($url)
-                . '</a>'
-                . '</p>';
+        $items_html = '';
+
+        foreach (($result['items'] ?? []) as $item) {
+            $status = $item['status'] ?? '';
+            $post_id = $item['post_id'] ?? 0;
+            $url = $item['url'] ?? '';
+            $message = $item['message'] ?? '';
+
+            $notice_class = match ($status) {
+                'created' => 'notice-success',
+                'skipped' => 'notice-warning',
+                'error' => 'notice-error',
+                default => 'notice-info',
+            };
+
+            $items_html .= '
+                <div class="notice ' . esc_attr($notice_class) . '">
+                    <p>' . esc_html($message);
+
+            if (!empty($post_id)) {
+                $items_html .= ' 投稿ID: ' . esc_html($post_id);
+            }
+
+            $items_html .= '</p>';
+
+            if (!empty($url)) {
+                $items_html .= '
+                    <p>
+                        対象URL: <a href="' . esc_url($url) . '" target="_blank" rel="noopener noreferrer">'
+                    . esc_html($url) .
+                    '</a>
+                    </p>
+                ';
+            }
+
+            $items_html .= '
+                </div>
+            ';
         }
 
-        $items_html .= '</div>';
+        return $summary . $items_html;
+    } finally {
+        delete_transient($lock_key);
     }
-
-    return $summary . $items_html;
 }
 
 /**
