@@ -99,8 +99,9 @@ function lgjh_render_job_list_columns($column_name, $post_id)
     if ($column_name === 'contact_email') {
         $contact_email = get_post_meta($post_id, '_lgjh_contact_email', true);
 
-        if (!empty($contact_email)) {
-            echo '<a href="mailto:' . esc_attr($contact_email) . '">' . esc_html($contact_email) . '</a>';
+        if (empty($contact_email)) {
+            echo '未掲載';
+            return;
         }
     }
 

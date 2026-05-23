@@ -96,6 +96,12 @@ function lgjh_parse_hellowork_detail_html($html, $source_url = '')
     $description     = lgjh_get_text_by_id($xpath, 'ID_shigotoNy');
     $salary          = lgjh_get_text_by_id($xpath, 'ID_chgn');
     $employment_type = lgjh_get_text_by_id($xpath, 'ID_koyoKeitai');
+    $contact_person  = lgjh_get_text_by_id($xpath, 'ID_ttsTts');
+    $contact_email   = lgjh_get_text_by_id($xpath, 'ID_ttsEmail');
+
+    if (empty($contact_person)) {
+        $contact_person = 'ご担当者様';
+    }
 
     libxml_clear_errors();
 
@@ -112,6 +118,8 @@ function lgjh_parse_hellowork_detail_html($html, $source_url = '')
         'description'     => $description,
         'salary'          => $salary,
         'employment_type' => $employment_type,
+        'contact_person'  => $contact_person,
+        'contact_email'   => $contact_email,
         'status'          => 'not_applied',
     ];
 }
