@@ -103,6 +103,8 @@ function lgjh_render_job_list_columns($column_name, $post_id)
             echo '未掲載';
             return;
         }
+
+        echo esc_html($contact_email);
     }
 
     // 俺用一行メモカラム
