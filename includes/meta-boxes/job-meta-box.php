@@ -41,6 +41,9 @@ function lgjh_render_job_meta_box($post)
     $salary          = get_post_meta($post->ID, '_lgjh_salary', true);
     $employment_type = get_post_meta($post->ID, '_lgjh_employment_type', true);
     $status          = get_post_meta($post->ID, '_lgjh_status', true);
+    $contact_person  = get_post_meta($post->ID, '_lgjh_contact_person', true);
+    $contact_email   = get_post_meta($post->ID, '_lgjh_contact_email', true);
+    $private_memo    = get_post_meta($post->ID, '_lgjh_private_memo', true);
 
     wp_nonce_field('lgjh_save_job_meta', 'lgjh_job_meta_nonce');
 ?>
@@ -123,6 +126,36 @@ function lgjh_render_job_meta_box($post)
             <option value="rejected" <?php selected($status, 'rejected'); ?>>見送り</option>
             <option value="closed" <?php selected($status, 'closed'); ?>>募集終了</option>
         </select>
+    </p>
+
+    <p>
+        <label for="lgjh_contact_person">担当者名</label><br>
+        <input
+            type="text"
+            id="lgjh_contact_person"
+            name="lgjh_contact_person"
+            value="<?php echo esc_attr($contact_person); ?>"
+            style="width: 100%;">
+    </p>
+
+    <p>
+        <label for="lgjh_contact_email">メールアドレス</label><br>
+        <input
+            type="email"
+            id="lgjh_contact_email"
+            name="lgjh_contact_email"
+            value="<?php echo esc_attr($contact_email); ?>"
+            style="width: 100%;">
+    </p>
+
+    <p>
+        <label for="lgjh_private_memo">俺用一行メモ</label><br>
+        <input
+            type="text"
+            id="lgjh_private_memo"
+            name="lgjh_private_memo"
+            value="<?php echo esc_attr($private_memo); ?>"
+            style="width: 100%;">
     </p>
 
 <?php
@@ -210,6 +243,30 @@ function lgjh_save_job_meta($post_id)
             $post_id,
             '_lgjh_status',
             sanitize_text_field($_POST['lgjh_status'])
+        );
+    }
+
+    if (isset($_POST['lgjh_contact_person'])) {
+        update_post_meta(
+            $post_id,
+            '_lgjh_contact_person',
+            sanitize_text_field($_POST['lgjh_contact_person'])
+        );
+    }
+
+    if (isset($_POST['lgjh_contact_email'])) {
+        update_post_meta(
+            $post_id,
+            '_lgjh_contact_email',
+            sanitize_email($_POST['lgjh_contact_email'])
+        );
+    }
+
+    if (isset($_POST['lgjh_private_memo'])) {
+        update_post_meta(
+            $post_id,
+            '_lgjh_private_memo',
+            sanitize_text_field($_POST['lgjh_private_memo'])
         );
     }
 }

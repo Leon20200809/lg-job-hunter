@@ -66,6 +66,9 @@ function lgjh_save_job_from_data($job_data)
     $salary          = $job_data['salary'] ?? '';
     $employment_type = $job_data['employment_type'] ?? '';
     $status          = $job_data['status'] ?? 'not_applied';
+    $contact_person  = $job_data['contact_person'] ?? '';
+    $contact_email   = $job_data['contact_email'] ?? '';
+    $private_memo    = $job_data['private_memo'] ?? '';
 
     if (empty($job_title)) {
         return new WP_Error('lgjh_empty_job_title', '求人タイトルが空です。');
@@ -117,6 +120,9 @@ function lgjh_save_job_from_data($job_data)
     update_post_meta($post_id, '_lgjh_salary', sanitize_text_field($salary));
     update_post_meta($post_id, '_lgjh_employment_type', sanitize_text_field($employment_type));
     update_post_meta($post_id, '_lgjh_status', sanitize_text_field($status));
+    update_post_meta($post_id, '_lgjh_contact_person', sanitize_text_field($contact_person));
+    update_post_meta($post_id, '_lgjh_contact_email', sanitize_email($contact_email));
+    update_post_meta($post_id, '_lgjh_private_memo', sanitize_text_field($private_memo));
 
     return [
         'status'  => 'created',
